@@ -1,0 +1,47 @@
+@mixin shades($name, $prop, $numShades, $redMin, $redMax, $greenMin, $greenMax, $blueMin, $blueMax) {
+  @for $n from 1 through $numShades {
+    &.#{$name}-#{$n} {
+      #{$prop}: rgb(
+        $redMin + ($redMax - $redMin) * $n,
+        $greenMin + ($greenMax - $greenMin) * $n,
+        $blueMin + ($blueMax - $blueMin) * $n
+      );
+    }
+  }
+}
+
+.SudokuBoard {
+  > table {
+    font: xx-large monospace;
+    border-collapse: collapse;
+    text-align: center;
+    user-select: none;
+
+    > colgroup {
+      border: solid medium;
+    }
+
+    > tbody > tr {
+      &:nth-child(3n) {
+        border-bottom: solid medium;
+      }
+
+      > td {
+        width: 1.4em;
+        height: 1.4em;
+        padding: 0;
+        border: solid thin;
+
+        &:hover {
+          background-color: lightyellow;
+        }
+
+        @include shades("invalid", "background-color", 4,
+          255, 255,
+          0, 255-64,
+          0, 255-64 
+        );
+      }
+    }
+  }
+}
