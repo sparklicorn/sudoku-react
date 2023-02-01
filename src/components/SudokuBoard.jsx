@@ -1,60 +1,83 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
+import { confine } from '../helpers/math';
+
 import {
   buildFromString,
-  NUM_CELLS,
   ROW_INDICES
 } from '../helpers/sudokuHelpers';
 
 import Sudoku from '../models/Sudoku';
-import Generator from '../services/sudokuGeneratorService';
 
 import '../styles/components/SudokuBoard.scss';
 
+const INVALID_LEVEL_MAP = [0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4];
+const NUMBER_KEYS = ['1','2','3','4','5','6','7','8','9'];
+
 class SudokuBoard extends React.Component {
   /**
-   * 
+   *
    * @param {object} props
    * @param {Sudoku} props.sudoku
    */
   constructor(props) {
     super(props);
 
-    const cellData = props.sudoku.puzzle.map((value) => ({
-      value,
-      activeHover: false
-    }));
-
-    this.state = { cellData };
+    this.state = {
+      cellData: props.sudoku.cellData,
+      selected: -1
+    };
   }
 
-  renderCell(index) {
-    const cellData = this.state.cellData[index];
+  _renderCell(cellIndex) {
+    const cellData = this.state.cellData.get(cellIndex);
+    const classNames = [];
+
+    if (cellData.invalidLevel > 0) {
+      classNames.push(`invalid-${INVALID_LEVEL_MAP[cellData.invalidLevel]}`);
+    }
+
+    if (cellIndex === this.state.selected) {
+      classNames.push('selected');
+    }
 
     return (
       <td
-        key={`sudoku-board-cell-${index}`}
-        className={``}
-        // onMouseDown={() => console.log(`MOUSE DOWN ${index}`)}
-        // onMouseEnter={() => this.setState()}
-        // onMouseLeave={() => console.log(`LEAVE ${index}`)}
-        // onClick={() => console.log(`clicked ${index}`)}
+        key={`sudoku-board-cell-${cellIndex}`}
+        className={classNames.join(' ')}
+        onMouseDown={(event) => {
+          event.target.focus();
+          this.setState({ selected: cellIndex })
+        }}
+        onKeyDown={(event) => {
+          console.log(event.key);
+
+          if (NUMBER_KEYS.includes(event.key)) {
+            const value = confine(parseInt(event.key), 1, 9);
+            this.props.sudoku.setValue(cellIndex, value);
+          }
+
+          if (event.key === "Backspace") {
+
+          }
+        }}
       >
         { cellData.value > 0 ? cellData.value : '' }
       </td>
     );
   }
 
-  renderRow(rowIndex) {
+  _renderRow(rowIndex) {
     return (
       <tr key={`sudoku-board-row-${rowIndex}`}>
-        { ROW_INDICES[rowIndex].map((cellIndex) => this.renderCell(cellIndex)) }
+        { ROW_INDICES[rowIndex].map((cellIndex) => this._renderCell(cellIndex)) }
       </tr>
     );
   }
 
   render() {
+    console.log('rendering');
     return (
       <div className='SudokuBoard'>
         <table>
@@ -63,7 +86,7 @@ class SudokuBoard extends React.Component {
           <colgroup span='3' />
           <tbody>
             {
-              [...Array(9).keys()].map((rowIndex) => this.renderRow(rowIndex))
+              [...Array(9).keys()].map((rowIndex) => this._renderRow(rowIndex))
             }
           </tbody>
         </table>

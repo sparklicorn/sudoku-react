@@ -3,17 +3,20 @@ import {
   _emptyBoard,
   MIN_PUZZLE_CLUES,
   NUM_CELLS,
-  NUM_ROWS,
-  NUM_COLUMNS,
-  NUM_REGIONS,
-  forEachNeighbor,
-  getCellRowIndex
+  forArea as forAreaIndices,
+  getCellRowIndex,
+  getCellColIndex,
+  getCellRegionIndex,
+  ROW_INDICES,
+  COL_INDICES,
+  REGION_INDICES,
+  NUM_DIGITS,
+  forEachNeighbor
 } from '../helpers/sudokuHelpers';
 
 import { confine } from '../helpers/math';
 
 import Solver from '../services/sudokuSolverService';
-import Generator from '../services/sudokuGeneratorService';
 
 class Sudoku {
 
@@ -24,6 +27,11 @@ class Sudoku {
    * @property {boolean} locked Whether the cell value can be changed.
    * @property {number} invalidLevel A measure of how invalid the cell is. [0-4]
    */
+
+  static INVALID_ROW_FLAG = 8;
+  static INVALID_COL_FLAG = 4;
+  static INVALID_REGION_FLAG = 2;
+  static INVALID_CELL_FLAG = 1;
 
   /**
    * Tests whether the puzzle is valid, throwing an exception if it is null, empty,
@@ -79,7 +87,7 @@ class Sudoku {
    */
 
   /**
-   * 
+   *
    * @param {options} options
    */
   constructor({ solution, puzzle } = {}) {
@@ -87,33 +95,21 @@ class Sudoku {
      * @type {number[]}
      */
     const _puzzle = puzzle || _emptyBoard();
-    
+
     /**
      * @type {Map<number, CellData}
      */
     this._cells = new Map();
 
-    /** @type {number[]} */
-    this._invalidRows = new Array(NUM_ROWS);
-    /** @type {number[]} */
-    this._invalidColumns = new Array(NUM_COLUMNS);
-    /** @type {number[]} */
-    this._invalidRegions = new Array(NUM_REGIONS);
-    /** @type {number[]} */
-    this._invalidCells = new Array(NUM_CELLS);
-
-    this._invalidRows.fill(0);
-    this._invalidColumns.fill(0);
-    this._invalidRegions.fill(0);
-    this._invalidCells.fill(0);
-
-    _puzzle.forEach((value, index) => {
-      this._cells.set(index, {
+    for (let i = 0; i < NUM_CELLS; i++) {
+      this._cells.set(i, {
         value: 0,
         locked: false,
         invalidLevel: 0
       });
+    }
 
+    _puzzle.forEach((value, index) => {
       this.setValue(index, value);
       this._lock(index);
     });
@@ -124,10 +120,14 @@ class Sudoku {
     this.numClues = 0;
   }
 
+  get cellData() {
+    return this._cells;
+  }
+
   /**
    * Sets the value of the given index.
-   * 
-   * @param {*} cellIndex 
+   *
+   * @param {*} cellIndex
    * @param {*} value
    */
   setValue(cellIndex, value) {
@@ -139,32 +139,8 @@ class Sudoku {
       return;
     }
 
-    this._cells.get(cellIndex).value = value;
-
-    const row = getCellRowIndex(cellIndex);
-    if (!this._isRowValid(row)) {
-      forRow(row, (rowCellIndex) => {
-
-      });
-    }
-
-    forEachNeighbor(cellIndex, (neighborIndex) => {
-
-    });
-  }
-
-  /**
-   * @callback cellMapCallback
-   * @param {object} cellData
-   * @returns {*}
-   */
-
-  /**
-   * // TODO
-   * @param {cellMapCallback} callback
-   */
-  mapOverCells(func) {
-    // TODO
+    this._cells.get(_cellIndex).value = _value;
+    this._updateValidity(_cellIndex);
   }
 
   _lock(cellIndex) {
@@ -173,8 +149,84 @@ class Sudoku {
     cellData.locked = true;
   }
 
-  _isRowValid(rowIndex) {
+  _updateValidity(cellIndex) {
+    // Reset all neighbor's invalid levels
+    forEachNeighbor(cellIndex, (neighborIndex) => {
+      this._cells.get(neighborIndex).invalidLevel = 0;
+    }, true);
 
+    const row = getCellRowIndex(cellIndex);
+    const rowValidity = this._isAreaValid(ROW_INDICES[row]);
+    if (rowValidity.length > 0) {
+      this._forArea(ROW_INDICES[row], (cellData, _areaCellIndex) => {
+        cellData.invalidLevel |= Sudoku.INVALID_ROW_FLAG;
+      });
+      this._forArea(rowValidity, (cellData, _areaCellIndex) => {
+        cellData.invalidLevel |= Sudoku.INVALID_CELL_FLAG;
+      });
+    }
+
+    const col = getCellColIndex(cellIndex);
+    const colValidity = this._isAreaValid(COL_INDICES[col]);
+    if (colValidity.length > 0) {
+      this._forArea(COL_INDICES[col], (cellData, _areaCellIndex) => {
+        cellData.invalidLevel |= Sudoku.INVALID_COL_FLAG;
+      });
+      this._forArea(colValidity, (cellData, _areaCellIndex) => {
+        cellData.invalidLevel |= Sudoku.INVALID_CELL_FLAG;
+      });
+    }
+
+    const region = getCellRegionIndex(cellIndex);
+    const regionValidity = this._isAreaValid(REGION_INDICES[region]);
+    if (regionValidity.length > 0) {
+      this._forArea(REGION_INDICES[region], (cellData, _areaCellIndex) => {
+        cellData.invalidLevel |= Sudoku.INVALID_REGION_FLAG;
+      });
+      this._forArea(regionValidity, (cellData, _areaCellIndex) => {
+        cellData.invalidLevel |= Sudoku.INVALID_CELL_FLAG;
+      });
+    }
+  }
+
+  /**
+   *
+   * @param {number[]} areaIndices
+   * @returns {number[]} Array containing indices of duplicate area values.
+   */
+  _isAreaValid(areaIndices) {
+    const result = [];
+    let seen = new Array(NUM_DIGITS);
+    seen.fill(-1);
+
+    this._forArea(areaIndices, (cellData, cellIndex) => {
+      if (cellData.value > 0) {
+        if (seen[cellData.value] > -1) {
+          result.push(cellIndex);
+          result.push(seen[cellData.value]);
+        }
+        seen[cellData.value] = cellIndex;
+      }
+    });
+
+    return result;
+  }
+
+  /**
+   * @callback CellCallbackFn
+   * @param {CellData} cellData
+   * @param {number} cellIndex
+   */
+
+  /**
+   * @param {number[]} indices
+   * @param {CellCallbackFn} callbackFn
+   */
+  _forArea(indices, callbackFn) {
+    forAreaIndices(indices, (cellIndex) => {
+      const cellData = this._cells.get(cellIndex);
+      callbackFn(cellData, cellIndex);
+    });
   }
 }
 
