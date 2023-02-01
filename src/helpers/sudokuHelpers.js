@@ -47,13 +47,13 @@ const _getRegionIndices = () => {
   for (let region = 0; region < NUM_REGIONS; region++) {
     result[region] = new Array(NUM_DIGITS);
 
-    const subRow = region / NUM_ROWS_IN_REGION;
+    const subRow = Math.trunc(region / NUM_ROWS_IN_REGION);
     const subCol = region % NUM_COLS_IN_REGION;
     for (let i = 0; i < NUM_DIGITS; i++) {
       result[region][i] =
         subRow * NUM_DIGITS * NUM_ROWS_IN_REGION +
         subCol * NUM_COLS_IN_REGION +
-        (i / NUM_ROWS_IN_REGION) * NUM_DIGITS +
+        Math.trunc(i / NUM_ROWS_IN_REGION) * NUM_DIGITS +
         (i % NUM_COLS_IN_REGION);
     }
   }
@@ -168,7 +168,7 @@ export const getCellRegionIndex = (cellIndex) => {
 };
 
 /**
- * 
+ *
  * @param {string} boardStr
  * @returns {number[]}
  */
@@ -181,30 +181,33 @@ export const buildFromString = (boardStr) => {
 }
 
 /**
- * @callback NeighborCallback
- * @param {number} neighborIndex
+ * @callback Callback
+ * @param {number} cellIndex
  */
 
 /**
- * 
- * @param {number} cellIndex 
- * @param {NeighborCallback} callback 
+ *
+ * @param {number} cellIndex
+ * @param {NeighborCallback} callback
  * @param {boolean} inclusive Whether `callback` should also be invoked for the given `cellIndex`.
  */
 export const forEachNeighbor = (cellIndex, callback, inclusive = false) => {
-  ROW_INDICES[getCellRowIndex(cellIndex)].forEach((neighborIndex) => {
+  const invokeCallbackForNeighbor = (neighborIndex) => {
     if (neighborIndex !== cellIndex || inclusive) {
       callback(neighborIndex);
     }
-  });
-  COL_INDICES[getCellColIndex(cellIndex)].forEach((neighborIndex) => {
-    if (neighborIndex !== cellIndex || inclusive) {
-      callback(neighborIndex);
-    }
-  });
-  REGION_INDICES[getCellRegionIndex(cellIndex)].forEach((neighborIndex) => {
-    if (neighborIndex !== cellIndex || inclusive) {
-      callback(neighborIndex);
-    }
-  });
+  };
+
+  ROW_INDICES[getCellRowIndex(cellIndex)].forEach(invokeCallbackForNeighbor);
+  COL_INDICES[getCellColIndex(cellIndex)].forEach(invokeCallbackForNeighbor);
+  REGION_INDICES[getCellRegionIndex(cellIndex)].forEach(invokeCallbackForNeighbor);
+};
+
+/**
+ *
+ * @param {number} indices
+ * @param {Callback} callback
+ */
+export const forArea = (indices, callback) => {
+  indices.forEach((cellIndex) => callback(cellIndex));
 };
