@@ -29,24 +29,48 @@
       }
 
       > td {
-        width: 1.4em;
-        height: 1.4em;
+        width: 36px;
+        height: 36px;
         padding: 0;
         border: solid thin;
 
-        &:hover {
-          background-color: lightyellow;
-        }
+        > .cellBtn {
+          width: 100%;
+          height: 100%;
+          border: none;
+          overflow: hidden;
+          background-color: white;
+          vertical-align: top;
 
-        @include shades("invalid", "background-color", 4,
-          255, 255,
-          191, 0,
-          191, 0
-        );
+          &:hover {
+            background-color: #ffffaaaa;
+          }
 
-        &.selected {
-          background-color: #ffffaacc;
-          border-color: #a0a000cc;
+          &.locked {
+            background-color: #ddd;
+            font-weight: 600;
+
+            &.selected {
+              background-color: #cccc00cc;
+            }
+          }
+
+          &.selected {
+            background-color: #ffffaaaa;
+          }
+
+          &.invalid {
+            background-color: #ffaaaaaa;
+            color: #a00;
+
+            &.locked {
+              background-color: #ddd;
+            }
+
+            &.selected {
+              background-color: #cccc00cc;
+            }
+          }
         }
       }
     }
