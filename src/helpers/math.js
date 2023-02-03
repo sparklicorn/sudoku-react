@@ -7,11 +7,8 @@
  * @param {number} b
  */
 export const confine = (value, a, b) => {
-  if (a > b) {
-    const temp = a;
-    a = b;
-    b = temp;
-  }
+  const min = Math.min(a, b);
+  const max = Math.max(a, b);
 
-  return Math.max(a, Math.min(value, b));
+  return Math.max(min, Math.min(value, max));
 };

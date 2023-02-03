@@ -1,110 +1,11 @@
-/**
- * Builds an index of rows -> cell indicies in row.
- *
- * @type {number[][]}
- */
-const _getRowIndices = () => {
-  const result = new Array(NUM_ROWS);
+/* eslint-disable no-bitwise */
 
-  for (let row = 0; row < NUM_ROWS; row++) {
-    result[row] = new Array(NUM_DIGITS);
-
-    for (let i = 0; i < NUM_DIGITS; i++) {
-      result[row][i] = row * NUM_DIGITS + i;
-    }
-  }
-
-  return result;
-};
-
-/**
- * Builds an index of columns -> cell indicies in column.
- *
- * @type {number[][]}
- */
-const _getColIndices = () => {
-  const result = new Array(NUM_COLUMNS);
-
-  for (let col = 0; col < NUM_COLUMNS; col++) {
-    result[col] = new Array(NUM_DIGITS);
-
-    for (let i = 0; i < NUM_DIGITS; i++) {
-      result[col][i] = col + i * NUM_DIGITS;
-    }
-  }
-
-  return result;
-};
-
-/**
- * Builds an index of regions -> cell indicies in region.
- *
- * @type {number[][]}
- */
-const _getRegionIndices = () => {
-  const result = new Array(NUM_REGIONS);
-
-  for (let region = 0; region < NUM_REGIONS; region++) {
-    result[region] = new Array(NUM_DIGITS);
-
-    const subRow = Math.trunc(region / NUM_ROWS_IN_REGION);
-    const subCol = region % NUM_COLS_IN_REGION;
-    for (let i = 0; i < NUM_DIGITS; i++) {
-      result[region][i] =
-        subRow * NUM_DIGITS * NUM_ROWS_IN_REGION +
-        subCol * NUM_COLS_IN_REGION +
-        Math.trunc(i / NUM_ROWS_IN_REGION) * NUM_DIGITS +
-        (i % NUM_COLS_IN_REGION);
-    }
-  }
-
-  return result;
-};
-
-/**
- * Builds an index of candidate values -> digit value.
- * Useful for a O(1) look-up of whether a candidate represents a digit.
- *
- * @type {number[][]}
- */
-const _getCandidatesToDigitsMap = () => {
-  const result = new Array(1 << NUM_DIGITS);
-  result.fill(0);
-
-  for (let digit = 1; digit <= NUM_DIGITS; digit++) {
-    result[1 << (digit - 1)] = digit;
-  }
-
-  return result;
-};
-
-export const NUM_CELLS = 81;
+// This must be a perfect square in order for the puzzle to work.
 export const NUM_DIGITS = 9;
-export const NUM_ROWS = 9;
-export const NUM_COLUMNS = 9;
-export const NUM_REGIONS = 9;
-export const NUM_ROWS_IN_REGION = 3;
-export const NUM_COLS_IN_REGION = 3;
 
-/**
- * @type {number[][]}
- */
-export const ROW_INDICES = _getRowIndices();
+export const NUM_CELLS = NUM_DIGITS * NUM_DIGITS;
 
-/**
- * @type {number[][]}
- */
-export const COL_INDICES = _getColIndices();
-
-/**
- * @type {number[][]}
- */
-export const REGION_INDICES = _getRegionIndices();
-
-/**
- * @type {number[]}
- */
-export const CANDIDATES_TO_DIGIT = _getCandidatesToDigitsMap();
+export const REGION_LENGTH = Math.sqrt(NUM_DIGITS);
 
 /**
  * Minimum number of clues allowed for generating puzzles.
@@ -114,24 +15,84 @@ export const MIN_PUZZLE_CLUES = 24;
 /**
  * Represents the combination of all candidate values.
  */
-export const ALL = 0x1ff;
+export const ALL = (2 ** NUM_DIGITS) - 1;
 
-export const encode = (digit) => {
-  return digit > 0 && digit <= NUM_DIGITS ? 1 << (digit - 1) : 0;
+/**
+ *
+ * @param {number} end
+ * @param {object} options
+ * @param {number} options.start
+ * @param {number} options.step Defaults to `1` when `end > start`, or `-1` when `end <= start`.
+ * @returns {number[]}
+ */
+export function range(end, { start = 0, step } = {}) {
+  const _step = step || ((step === undefined && (end > start)) ? 1 : -1);
+  const result = [];
+
+  for (
+    let n = start;
+    (_step > 0) ? (n < end) : (n > end);
+    n += _step
+  ) {
+    result.push(n);
+  }
+
+  return result;
+}
+
+const _getRowIndices = (row) => range(NUM_DIGITS).map((i) => (i + NUM_DIGITS * row));
+const _getColIndices = (col) => range(NUM_DIGITS).map((i) => (NUM_DIGITS * i + col));
+const _getRegionIndices = (region) => range(NUM_DIGITS).map((i) => (
+  Math.trunc(region / REGION_LENGTH) * NUM_DIGITS * REGION_LENGTH
+  + (region % REGION_LENGTH) * REGION_LENGTH
+  + Math.trunc(i / REGION_LENGTH) * NUM_DIGITS
+  + (i % REGION_LENGTH)
+));
+
+const _getCellRowIndex = (cellIndex) => Math.trunc(cellIndex / NUM_DIGITS);
+const _getCellColIndex = (cellIndex) => (cellIndex % NUM_DIGITS);
+const _getCellRegionIndex = (cellIndex) => (
+  Math.trunc(_getCellRowIndex(cellIndex) / REGION_LENGTH) * REGION_LENGTH
+  + Math.trunc(_getCellColIndex(cellIndex) / REGION_LENGTH)
+);
+
+const _getCellAreas = (cellIndex) => ({
+  row: _getCellRowIndex(cellIndex),
+  col: _getCellColIndex(cellIndex),
+  region: _getCellRegionIndex(cellIndex)
+});
+
+const _getCellNeighborIndices = (cellIndex) => [
+  _getRowIndices(_getCellRowIndex(cellIndex)),
+  _getColIndices(_getCellColIndex(cellIndex)),
+  _getRegionIndices(_getCellRegionIndex(cellIndex))
+].flat().filter((index) => (index !== cellIndex));
+
+export const CANDIDATES_TO_DIGIT = () => range(2 ** NUM_DIGITS).fill(0);
+range(NUM_DIGITS).forEach((i) => {
+  CANDIDATES_TO_DIGIT[2 ** i] = i + 1;
+});
+
+export const INDICES = {
+  ROW: range(NUM_DIGITS).map(_getRowIndices),
+  COLUMN: range(NUM_DIGITS).map(_getColIndices),
+  REGION: range(NUM_DIGITS).map(_getRegionIndices),
+  NEIGHBORS: range(NUM_CELLS).map(_getCellNeighborIndices),
+  CELL: range(NUM_CELLS).map(_getCellAreas)
 };
 
-export const decode = (candidates) => {
-  return CANDIDATES_TO_DIGIT[candidates];
-};
+export const encode = (digit) => (
+  digit > 0 && digit <= (NUM_DIGITS ? (1 << (digit - 1)) : 0)
+);
+
+export const decode = (candidates) => CANDIDATES_TO_DIGIT[candidates];
 
 /**
  * Returns whether the given encoded candidates number contains a single digit.
  *
  * @param {number} candidates Bits representing candidate values.
  */
-export const isDigit = (candidates) => {
-  return decode(candidates) > 0;
-};
+export const isDigit = (candidates) => decode(candidates) > 0;
 
 /**
  * Counts and returns the number of clues on the given board.
@@ -140,11 +101,12 @@ export const isDigit = (candidates) => {
  */
 export const countClues = (board) => {
   let result = 0;
-  for (let cellCandidates in board) {
+  board.forEach((cellCandidates) => {
     if (this._isDigit(cellCandidates)) {
       result++;
     }
-  }
+  });
+
   return result;
 };
 
@@ -153,19 +115,7 @@ export const countClues = (board) => {
  *
  * @type {Number[]}
  */
-export const _emptyBoard = () => {
-  const emptyBoard = new Array(NUM_CELLS);
-  emptyBoard.fill(0);
-  return emptyBoard;
-};
-
-export const getCellRowIndex = (cellIndex) => Math.trunc(cellIndex / NUM_COLUMNS);
-export const getCellColIndex = (cellIndex) => (cellIndex % NUM_COLUMNS);
-export const getCellRegionIndex = (cellIndex) => {
-  const row = getCellRowIndex(cellIndex);
-  const col = getCellColIndex(cellIndex);
-  return Math.trunc(row / NUM_COLS_IN_REGION) * NUM_COLS_IN_REGION + Math.trunc(col / NUM_COLS_IN_REGION);
-};
+export const _emptyBoard = () => new Array(NUM_CELLS).fill(0);
 
 /**
  *
@@ -173,41 +123,13 @@ export const getCellRegionIndex = (cellIndex) => {
  * @returns {number[]}
  */
 export const buildFromString = (boardStr) => {
-  if (boardStr.length != NUM_CELLS) {
-    throw new Error(`Cannot parse sudoku board string: Improper length (${boardStr.length}). Must be ${NUM_CELLS}.`);
+  if (boardStr.length !== NUM_CELLS) {
+    throw new Error(`
+      Cannot parse sudoku board string:
+      Improper length (${boardStr.length}).
+      Must be ${NUM_CELLS}.
+    `);
   }
 
   return boardStr.replaceAll(/[^1-9]/g, '0').split('').map(Number);
-}
-
-/**
- * @callback Callback
- * @param {number} cellIndex
- */
-
-/**
- *
- * @param {number} cellIndex
- * @param {NeighborCallback} callback
- * @param {boolean} inclusive Whether `callback` should also be invoked for the given `cellIndex`.
- */
-export const forEachNeighbor = (cellIndex, callback, inclusive = false) => {
-  const invokeCallbackForNeighbor = (neighborIndex) => {
-    if (neighborIndex !== cellIndex || inclusive) {
-      callback(neighborIndex);
-    }
-  };
-
-  ROW_INDICES[getCellRowIndex(cellIndex)].forEach(invokeCallbackForNeighbor);
-  COL_INDICES[getCellColIndex(cellIndex)].forEach(invokeCallbackForNeighbor);
-  REGION_INDICES[getCellRegionIndex(cellIndex)].forEach(invokeCallbackForNeighbor);
-};
-
-/**
- *
- * @param {number} indices
- * @param {Callback} callback
- */
-export const forArea = (indices, callback) => {
-  indices.forEach((cellIndex) => callback(cellIndex));
 };
