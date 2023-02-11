@@ -63,8 +63,6 @@ class SudokuBoard extends React.Component {
    * @param {KeyboardEvent} event
    */
   _onKeyDown(event) {
-    console.log(`_onKeyDown(event.key: '${event.key}')`);
-
     switch (event.key) {
       case '1': case '2': case '3': case '4': case '5':
       case '6': case '7': case '8': case '9':
@@ -88,7 +86,6 @@ class SudokuBoard extends React.Component {
    * @param {number} cellIndex
    */
   _onMouseDown(event, cellIndex) {
-    console.log(`_onMouseDown(event, ${cellIndex})`);
     const { selected } = this.state;
 
     if (event.button === 0) {
@@ -142,7 +139,6 @@ class SudokuBoard extends React.Component {
   }
 
   render() {
-    console.log('rendering');
     return (
       <div
         className="SudokuBoard"

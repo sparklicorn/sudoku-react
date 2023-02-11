@@ -12,6 +12,14 @@
   }
 }
 
+// Cell background colors change based on combination of cell state
+// locked, selected, invalid [+:hover for each]
+// TODO create functions that blend colors
+$bg-normal: white;
+$bg-locked: white;
+$bg-selected: white;
+$bg-invalid: white;
+
 .SudokuBoard {
   > table {
     font: xx-large monospace;
@@ -32,7 +40,7 @@
         width: 36px;
         height: 36px;
         padding: 0;
-        border: solid thin;
+        border: solid thin #aaa;
 
         > .cellBtn {
           width: 100%;
@@ -40,35 +48,46 @@
           border: none;
           overflow: hidden;
           background-color: white;
+          background-blend-mode: multiply; // TODO see if this is viable for combining different background shades per cell attribute (locked, selected, invalid, hover)
           vertical-align: top;
 
           &:hover {
-            background-color: #ffffaaaa;
+            background-color: #ffa;
           }
 
           &.locked {
-            background-color: #ddd;
-            font-weight: 600;
+            background-color: #eee;
+            &:hover {
+              background-color: #ffa;
+            }
 
             &.selected {
-              background-color: #cccc00cc;
+              background-color: #cca;
             }
           }
 
           &.selected {
-            background-color: #ffffaaaa;
+            background-color: #ffa;
           }
 
           &.invalid {
-            background-color: #ffaaaaaa;
-            color: #a00;
+            background-color: #fbb;
+            &:hover {
+              background-color: #ffa;
+            }
 
             &.locked {
-              background-color: #ddd;
+              background-color: #d99;
+              &:hover {
+                background-color: #ffa;
+              }
+              &.selected {
+                background-color: #ca0;
+              }
             }
 
             &.selected {
-              background-color: #cccc00cc;
+              background-color: #db0;
             }
           }
         }
